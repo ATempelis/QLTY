@@ -16,6 +16,8 @@ const allowedIPs = ['192.168.1.101', '203.0.113.46', '192.168.10.160', '127.0.0.
 // To keep track of connected users and their IP addresses
 let connectedUsers = {};
 
+
+
 const isAllowedIp = (req) => {
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const formattedIp = clientIp.replace('::ffff:', ''); // Remove IPv6 prefix for IPv4 addresses
