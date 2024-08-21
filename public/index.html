@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="feedbackMessage" class="hidden"></div>
+
+    <div id="tasksContainer"></div>
+
+    <!-- Template for task -->
+    <template id="taskTemplate">
+        <div class="task">
+            <span></span>
+            <div>
+                <button class="state-btn"></button>
+                <button class="move-btn">Move</button>
+                <button class="showContents">Show Contents</button>
+            </div>
+            <ul class="contents hidden"></ul>
+            <div class="uploadContainer hidden">
+                <h3>Upload File</h3>
+                <form class="uploadForm" enctype="multipart/form-data">
+                    <input type="file" class="fileInput" name="file" required>
+                    <button type="submit">Upload File</button>
+                </form>
+            </div>
+            <div class="notesContainer hidden">
+                <h3>Notes</h3>
+                <textarea class="notesInput" placeholder="Add your notes here..."></textarea>
+                <button class="saveNotes">Save Notes</button>
+            </div>
+        </div>
+    </template>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
