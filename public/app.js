@@ -46,9 +46,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    const fetchTaskContents = async (folderName) => {
+    const fetchTaskContents = async (folderName, parentPath = '') => {
         try {
-            const response = await fetch(`/tasks/${encodeURIComponent(folderName)}`);
+            // Ensure we are only encoding the components that haven't been encoded yet
+            const encodedParentPath = parentPath ? encodeURIComponent(parentPath).replace(/%252F/g, '%2F') + '/' : '';
+            const encodedFolderName = encodeURIComponent(folderName).replace(/%2520/g, '%20');
+            const url = `/tasks/${encodedParentPath}${encodedFolderName}`;
+    
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch contents of ${folderName}: ${response.statusText}`);
+            }
             const contents = await response.json();
             return contents;
         } catch (error) {
@@ -57,6 +65,33 @@ document.addEventListener('DOMContentLoaded', async () => {
             return [];
         }
     };
+    
+    
+    
+
+    const fetchAllSubfolders = async (baseFolder) => {
+        const folders = [];
+    
+        const fetchSubfolders = async (folderPath) => {
+            try {
+                const contents = await fetchTaskContents(folderPath);
+    
+                for (const item of contents) {
+                    if (item.isFolder) {
+                        const fullPath = `${folderPath}/${encodeURIComponent(item.name)}`;
+                        folders.push(fullPath);
+                        await fetchSubfolders(fullPath); // Recursive call to fetch deeper subfolders
+                    }
+                }
+            } catch (error) {
+                console.error(`Failed to fetch contents of ${folderPath}:`, error);
+            }
+        };
+    
+        await fetchSubfolders(baseFolder);
+        return folders;
+    };
+    
 
     const renderTasks = () => {
         tasksContainer.innerHTML = '';
@@ -80,48 +115,75 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const showContentsButton = taskElement.querySelector('.showContents');
                 const contentsList = taskElement.querySelector('.contents');
                 const uploadContainer = taskElement.querySelector('.uploadContainer');
-                const uploadForm = taskElement.querySelector('.uploadForm');
-                const fileInput = taskElement.querySelector('.fileInput');
                 const notesContainer = taskElement.querySelector('.notesContainer');
                 const notesInput = taskElement.querySelector('.notesInput');
                 const saveNotesButton = taskElement.querySelector('.saveNotes');
 
+                // Ensure state is defined and defaults to 'To Do'
+                task.state = task.state || 'To Do';
+
+                // Set task class and state colors
                 taskDiv.classList.add(task.state.toLowerCase().replace(' ', '-'));
                 if (task.completed) {
                     taskDiv.classList.add('completed');
                 }
 
-                if (!isAllowed) {
-                    moveButton.classList.add('hidden');
-                } else {
-                    moveButton.classList.remove('hidden');
-                }
-
+                // Set task description and state button text
                 taskDiv.querySelector('span').textContent = task.description;
                 stateButton.textContent = task.state;
                 stateButton.style.backgroundColor = stateColors[task.state];
                 stateButton.style.borderColor = stateColors[task.state];
 
+                // Event listener for the state button
+                stateButton.addEventListener('click', () => {
+                    toggleState(task.id);
+                });
+
+                // Event listener for the move button
+                moveButton.addEventListener('click', () => {
+                    if (task.state !== 'Done') {
+                        showFeedback('Move is not allowed before the status is Done.', 'error');
+                    } else {
+                        moveTask(task.id);
+                    }
+                });
+
+                // Event listener for the showContents button
                 showContentsButton.addEventListener('click', async () => {
                     if (contentsList.classList.contains('hidden')) {
                         const contents = await fetchTaskContents(task.id);
-                        contentsList.innerHTML = contents.map(item => `
-                            <li>
-                                ${item.isFolder ? `<strong>${item.name}</strong>` : `<a href="/tasks/${encodeURIComponent(task.id)}/${encodeURIComponent(item.name)}" target="_blank">${item.name}</a>`}
-                            </li>
-                        `).join('');
+                        contentsList.innerHTML = contents.map(item => {
+                            if (item.isFolder) {
+                                return `
+                                    <li class="folder-item">
+                                        <strong class="folder-toggle">${item.name}</strong>
+                                        <ul class="subfolder-contents hidden"></ul>
+                                    </li>
+                                `;
+                            } else {
+                                return `<li><a href="/tasks/${encodeURIComponent(task.id)}/${encodeURIComponent(item.name)}" target="_blank">${item.name}</a></li>`;
+                            }
+                        }).join('');
+                
                         contentsList.classList.remove('hidden');
                         uploadContainer.classList.remove('hidden');
                         notesContainer.classList.remove('hidden');
-
+                
                         // Fetch and display notes
                         const notesResponse = await fetch(`/tasks/${encodeURIComponent(task.id)}/notes`);
                         if (notesResponse.ok) {
                             const notesText = await notesResponse.text();
                             notesInput.value = notesText;
                         }
-
+                
+                        // Populate the folder selection dropdown with all subfolders
+                        const folderSelect = uploadContainer.querySelector('.folderSelect');
+                        await populateFolderSelect(folderSelect, task.id);
+                
                         showContentsButton.textContent = 'Hide Contents';
+                
+                        // Add event listeners to folder toggles
+                        addFolderToggleListeners(contentsList, task.id);
                     } else {
                         contentsList.classList.add('hidden');
                         uploadContainer.classList.add('hidden');
@@ -129,18 +191,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                         showContentsButton.textContent = 'Show Contents';
                     }
                 });
-
+                
+                // Event listener for the upload form
+                const uploadForm = uploadContainer.querySelector('.uploadForm');
                 uploadForm.addEventListener('submit', async (event) => {
                     event.preventDefault();
                     const formData = new FormData(uploadForm);
+                
+                    const selectedFolder = uploadContainer.querySelector('.folderSelect').value; // Get selected folder path
+                
                     try {
-                        const response = await fetch(`/tasks/${encodeURIComponent(task.id)}/upload`, {
+                        const response = await fetch(`/tasks/${encodeURIComponent(selectedFolder)}/upload`, {
                             method: 'POST',
                             body: formData
                         });
                         const result = await response.json();
                         if (result.success) {
-                            showFeedback(`File "${result.file}" uploaded successfully.`, 'success');
+                            showFeedback(`File "${result.file}" uploaded successfully to ${selectedFolder}.`, 'success');
                             socket.emit('taskUpdate', { id: task.id });
                         } else {
                             showFeedback('Failed to upload file.', 'error');
@@ -150,7 +217,61 @@ document.addEventListener('DOMContentLoaded', async () => {
                         showFeedback('Failed to upload file.', 'error');
                     }
                 });
+                
 
+                async function populateFolderSelect(selectElement, parentPath) {
+                    selectElement.innerHTML = ''; // Clear existing options
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = parentPath;
+                    defaultOption.text = 'Root Folder';
+                    selectElement.appendChild(defaultOption);
+                
+                    const allSubfolders = await fetchAllSubfolders(parentPath);
+                
+                    allSubfolders.forEach(fullPath => {
+                        const option = document.createElement('option');
+                        option.value = fullPath;
+                        option.text = fullPath.replace(`${encodeURIComponent(parentPath)}/`, '').replace(/%20/g, ' '); // Show relative path
+                        selectElement.appendChild(option);
+                    });
+                }
+                
+
+                function addFolderToggleListeners(parentElement, parentPath) {
+                    parentElement.querySelectorAll('.folder-toggle').forEach(toggle => {
+                        toggle.addEventListener('click', async () => {
+                            const subfolderContents = toggle.nextElementSibling;
+                            const folderName = toggle.textContent.trim().replace(' (Click to collapse)', '');
+                
+                            if (subfolderContents.classList.contains('hidden')) {
+                                if (!subfolderContents.hasChildNodes()) {
+                                    const fullPath = parentPath ? `${parentPath}/${encodeURIComponent(folderName)}` : encodeURIComponent(folderName);
+                                    const subfolderItems = await fetchTaskContents(fullPath);
+                
+                                    if (Array.isArray(subfolderItems)) {
+                                        subfolderContents.innerHTML = subfolderItems.map(subItem => {
+                                            return subItem.isFolder
+                                                ? `<li class="folder-item"><strong class="folder-toggle">${subItem.name}</strong><ul class="subfolder-contents hidden"></ul></li>`
+                                                : `<li><a href="/tasks/${fullPath}/${encodeURIComponent(subItem.name)}" target="_blank">${subItem.name}</a></li>`;
+                                        }).join('');
+                                        addFolderToggleListeners(subfolderContents, fullPath); // Recursively add listeners for nested subfolders
+                                    } else {
+                                        console.error('Unexpected data format:', subfolderItems);
+                                        showFeedback('Unexpected data format received from server.', 'error');
+                                    }
+                                }
+                                subfolderContents.classList.remove('hidden');
+                                toggle.textContent = `${folderName} (Click to collapse)`;
+                            } else {
+                                subfolderContents.classList.add('hidden');
+                                toggle.textContent = folderName;
+                            }
+                        });
+                    });
+                }
+                
+
+                // Event listener for the save notes button
                 saveNotesButton.addEventListener('click', async () => {
                     const notes = notesInput.value;
                     try {
@@ -172,15 +293,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         console.error('Error saving notes:', error);
                         showFeedback('Failed to save notes.', 'error');
                     }
-                });
-
-
-                taskElement.querySelector('.move-btn').addEventListener('click', () => {
-                    moveTask(task.id, task.description);
-                });
-
-                stateButton.addEventListener('click', () => {
-                    toggleState(task.id);
                 });
 
                 categorySection.appendChild(taskElement);
@@ -208,6 +320,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             socket.emit('taskUpdate', task);
         }
     };
+
     const moveTask = async (id) => {
         try {
             const response = await fetch(`/tasks/${encodeURIComponent(id)}/move`, {
@@ -216,15 +329,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!response.ok) {
                 throw new Error('Failed to move task.');
             }
-    
+
             // Remove task from local state and update UI
             tasks = tasks.filter(task => task.id !== id);
             localStorage.setItem('tasks', JSON.stringify(tasks));
             renderTasks();
-    
+
             // Notify server about the move
             socket.emit('taskUpdate', { id, moved: true });
-    
+
             showFeedback('Task moved successfully!', 'success');
         } catch (error) {
             console.error('Error moving task:', error);
@@ -232,15 +345,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-
-
     socket.on('taskUpdate', (task) => {
         const existingTask = tasks.find(t => t.id === task.id);
-            if (existingTask) {
-                Object.assign(existingTask, task);
-            } else {
-                tasks.push(task);
-            }
+        if (existingTask) {
+            Object.assign(existingTask, task);
+        } else {
+            tasks.push(task);
+        }
         localStorage.setItem('tasks', JSON.stringify(tasks));
         fetchTasks(); // Re-fetch tasks to update the UI
         renderTasks();

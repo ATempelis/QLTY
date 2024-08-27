@@ -24,8 +24,11 @@
             <div class="uploadContainer hidden">
                 <h3>Upload File</h3>
                 <form class="uploadForm" enctype="multipart/form-data">
+                    <select class="folderSelect">
+                        <!-- Options will be populated dynamically -->
+                    </select>
                     <input type="file" class="fileInput" name="file" required>
-                    <button type="submit">Upload File</button>
+                    <button type="submit" class="uploadButton">Upload File</button>
                 </form>
             </div>
             <div class="notesContainer hidden">

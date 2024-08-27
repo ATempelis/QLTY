@@ -11,7 +11,7 @@ const PORT = 3000;
 const TASKS_DIR = path.join(__dirname, 'tasks');
 
 // Replace with the actual IP addresses you want to allow delete and move
-const allowedIPs = ['192.168.1.101', '203.0.113.46', '192.168.10.160', '127.0.0.1', '::1', '192.168.10.159'];
+const allowedIPs = ['127.0.0.1', '::1', '192.168.0.21'];
 
 // To keep track of connected users and their IP addresses
 let connectedUsers = {};
@@ -76,8 +76,43 @@ app.get('/tasks', (req, res) => {
     });
 });
 
+app.get('/tasks/*', (req, res) => {
+    const folderPath = path.join(TASKS_DIR, ...req.params[0].split('/').map(decodeURIComponent));
+
+    fs.readdir(folderPath, { withFileTypes: true }, (err, items) => {
+        if (err) {
+            return res.status(500).json({ error: 'Unable to fetch folder contents.' });
+        }
+
+        const contents = items.map(item => ({
+            name: item.name,
+            isFolder: item.isDirectory()
+        }));
+
+        res.json(contents);
+    });
+});
+
+
+
 app.get('/tasks/:folder', (req, res) => {
     const folderPath = path.join(TASKS_DIR, req.params.folder);
+    fs.readdir(folderPath, { withFileTypes: true }, (err, items) => {
+        if (err) {
+            return res.status(500).json({ error: 'Unable to fetch folder contents.' });
+        }
+
+        const contents = items.map(item => ({
+            name: item.name,
+            isFolder: item.isDirectory()
+        }));
+
+        res.json(contents);
+    });
+});
+app.get('/tasks/:folder*', (req, res) => {
+    const folderPath = path.join(TASKS_DIR, ...req.params[0].split('/').map(decodeURIComponent));
+
     fs.readdir(folderPath, { withFileTypes: true }, (err, items) => {
         if (err) {
             return res.status(500).json({ error: 'Unable to fetch folder contents.' });
@@ -142,17 +177,63 @@ app.post('/tasks/:folder/move', (req, res) => {
 
 // Helper function to move the folder
 const moveFolder = (sourcePath, destinationPath, res) => {
-    fs.rename(sourcePath, destinationPath, (err) => {
+    fs.mkdir(destinationPath, { recursive: true }, (err) => {
         if (err) {
-            console.error('Error moving folder:', err);
-            return res.status(500).json({ error: 'Unable to move folder.' });
+            console.error('Error creating destination directory:', err);
+            return res.status(500).json({ error: 'Unable to create destination directory.' });
         }
 
-        console.log(`Folder moved from ${sourcePath} to ${destinationPath}`);
-        io.emit('taskUpdate', { id: path.basename(sourcePath), moved: true });
-        res.json({ success: true });
+        fs.readdir(sourcePath, { withFileTypes: true }, (err, items) => {
+            if (err) {
+                console.error('Error reading source directory:', err);
+                return res.status(500).json({ error: 'Unable to read source directory.' });
+            }
+
+            let movePromises = items.map(item => {
+                const srcPath = path.join(sourcePath, item.name);
+                const destPath = path.join(destinationPath, item.name);
+
+                if (item.isDirectory()) {
+                    return new Promise((resolve, reject) => {
+                        moveFolder(srcPath, destPath, {
+                            json: (response) => response.success ? resolve() : reject(response.error),
+                        });
+                    });
+                } else {
+                    return new Promise((resolve, reject) => {
+                        fs.rename(srcPath, destPath, (err) => {
+                            if (err) {
+                                console.error('Error moving file:', err);
+                                reject(err);
+                            } else {
+                                resolve();
+                            }
+                        });
+                    });
+                }
+            });
+
+            Promise.all(movePromises)
+                .then(() => {
+                    fs.rmdir(sourcePath, (err) => {
+                        if (err) {
+                            console.error('Error removing source directory:', err);
+                            return res.status(500).json({ error: 'Unable to remove source directory.' });
+                        }
+
+                        console.log(`Folder moved from ${sourcePath} to ${destinationPath}`);
+                        io.emit('taskUpdate', { id: path.basename(sourcePath), moved: true });
+                        res.json({ success: true });
+                    });
+                })
+                .catch(err => {
+                    console.error('Error moving folder contents:', err);
+                    res.status(500).json({ error: 'Unable to move all folder contents.' });
+                });
+        });
     });
 };
+
 
 app.get('/check-ip', (req, res) => {
     if (isAllowedIp(req)) {

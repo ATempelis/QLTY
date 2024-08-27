@@ -12,6 +12,32 @@ body {
   padding: 20px;
 }
 
+.uploadContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 10px;
+}
+
+/* Style for the folderSelect dropdown */
+.folderSelect {
+  max-width: 300px; /* Adjust to your preferred width */
+  width: 100%;
+  margin-bottom: 10px; /* Adds space between the dropdown and the button */
+}
+
+/* Style for the upload button */
+.uploadButton {
+  margin-top: 10px; /* Adds some space above the button */
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+/* Style for the file input */
+.fileInput {
+  margin-top: 10px; /* Adds some space above the file input */
+}
+
 /* Feedback messages */
 #feedbackMessage {
   display: none;
