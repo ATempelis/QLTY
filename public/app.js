@@ -163,9 +163,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 // Event listener for the showContents button
                 showContentsButton.addEventListener("click", async (event) => {
-                    console.log("Show Contents Button Clicked"); // Debugging log
+                   
                     if (contentsList.classList.contains("hidden")) {
-                        console.log("Expanding Content"); // Debugging log
+                       
                         const contents = await fetchTaskContents(task.id);
                         contentsList.innerHTML = contents
                             .map((item) => {
@@ -207,7 +207,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                         // Add event listeners to folder toggles
                         addFolderToggleListeners(contentsList, task.id);
                     } else {
-                        console.log("Collapsing Content"); // Debugging log
+                       
                         contentsList.classList.add("hidden");
                         uploadContainer.classList.add("hidden");
                         notesContainer.classList.add("hidden");
@@ -338,10 +338,6 @@ document.addEventListener("DOMContentLoaded", async () => {
                         showFeedback("Cannot save empty notes.", "error");
                         return;
                     }
-
-                    console.log(
-                        "Save Notes button clicked, collapsing content after saving."
-                    ); // Debugging log
 
                     try {
                         const response = await fetch(
