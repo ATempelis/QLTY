@@ -67,8 +67,11 @@ app.post('/tasks/:folder/notes', (req, res) => {
         }
 
         if (uniqueContent) {
-            const timestamp = new Date().toISOString();
-            const noteEntry = `${timestamp} - ${userIp}: ${uniqueContent}\n`;
+            const { DateTime } = require('luxon');
+            const localTime = DateTime.now().setZone('Europe/Athens').toFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+
+            //const timestamp = new Date().toISOString();
+            const noteEntry = `${localTime} - ${userIp}: ${uniqueContent}\n`;
             const updatedNotes = normalizedExistingNotes + '\n' + noteEntry;
 
             fs.writeFile(notesFilePath, updatedNotes, 'utf8', (err) => {
