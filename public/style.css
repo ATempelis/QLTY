@@ -275,7 +275,7 @@ ul.contents li a:hover {
   margin-bottom: 10px;
 }
 
-.saveNotes {
+.saveNotes, .clearNotes {
   background-color: #007bff; /* Blue background */
   color: #fff; /* White text */
   border: none;
@@ -285,7 +285,7 @@ ul.contents li a:hover {
   transition: background-color 0.3s ease;
 }
 
-.saveNotes:hover {
+.saveNotes:hover, .clearNotes:hover {
   background-color: #0056b3; /* Darker blue on hover */
 }
 
