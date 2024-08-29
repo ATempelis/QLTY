@@ -51,12 +51,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const fetchTaskContents = async (folderName, parentPath = "") => {
         try {
             const encodedParentPath = parentPath
-                ? encodeURIComponent(parentPath).replace(/%252F/g, "%2F") + "/"
-                : "";
-            const encodedFolderName = encodeURIComponent(folderName).replace(
-                /%2520/g,
-                "%20"
-            );
+        ? encodeURIComponent(parentPath)
+            .replace(/%252F/g, "%2F")
+            .replace(/%2526/g, "%26") // Handle '&' character encoding
+            + "/"
+        : "";
+
+    const encodedFolderName = encodeURIComponent(folderName)
+        .replace(/%2520/g, "%20")  // Handle spaces
+        .replace(/%2526/g, "%26"); // Handle '&' character encoding
             const url = `/tasks/${encodedParentPath}${encodedFolderName}`;
 
             const response = await fetch(url);
