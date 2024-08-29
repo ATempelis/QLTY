@@ -16,9 +16,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   const stateColors = {
-    "To Do": "blue",
-    "In Progress": "orange",
-    Done: "green",
+    "To Do": "#42a5f5",
+    "In Progress": "#ff6600",
+    Done: "#66bb6a",
   };
 
   const states = ["To Do", "In Progress", "Done"];

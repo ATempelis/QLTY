@@ -21,11 +21,14 @@ body {
 
 /* Style for the folderSelect dropdown */
 .folderSelect {
-  max-width: 300px; /* Adjust to your preferred width */
+  max-width: 340px; /* Adjust to your preferred width */
   width: 100%;
   margin-bottom: 10px; /* Adds space between the dropdown and the button */
 }
 
+.buttonsContainer{
+display: flex;
+}
 /* Style for the upload button */
 .uploadButton {
   margin-top: 10px; /* Adds some space above the button */
@@ -142,8 +145,8 @@ button:hover {
 
 /* State colors */
 .task.to-do {
-  border-left: 5px solid #007bff; /* Blue for To Do */
-  border-right: 5px solid #007bff;
+  border-left: 5px solid #42a5f5; /* Blue for To Do */
+  border-right: 5px solid #42a5f5;
 }
 
 .task.in-progress {
@@ -152,8 +155,8 @@ button:hover {
 }
 
 .task.done {
-  border-left: 5px solid #28a745; /* Green for Done */
-  border-right: 5px solid #28a745;
+  border-left: 5px solid #66bb6a; /* Green for Done */
+  border-right: 5px solid #66bb6a;
 }
 
 .task.completed {
