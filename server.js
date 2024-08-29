@@ -41,11 +41,11 @@ app.get('/tasks/:folder/notes', (req, res) => {
 });
 
 // Save notes endpoint
-// Save notes endpoint
 app.post('/tasks/:folder/notes', (req, res) => {
     const notesFilePath = path.join(TASKS_DIR, req.params.folder, 'notes.txt');
     const newNote = req.body.notes.trim();
-    const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const userIpIn = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const userIp = userIpIn.replace('::ffff:', '');
 
     fs.readFile(notesFilePath, 'utf8', (err, existingNotes) => {
         if (err && err.code !== 'ENOENT') {
