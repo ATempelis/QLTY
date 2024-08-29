@@ -1,49 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Task Manager</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
     <div id="feedbackMessage" class="hidden"></div>
 
     <div id="tasksContainer"></div>
 
     <!-- Template for task -->
     <template id="taskTemplate">
-        <div class="task">
-            <span></span>
-            <div>
-                <button id="rotateStateButton" class="stateButton">Normal</button>
-                <button class="state-btn"></button>
-                <button class="move-btn">Move</button>
-                <button class="showContents">Show Contents</button>
-            </div>
-            <ul class="contents hidden"></ul>
-            <div class="uploadContainer hidden">
-                <h3>Upload File</h3>
-                <form class="uploadForm" enctype="multipart/form-data">
-                    <select class="folderSelect">
-                        <!-- Options will be populated dynamically -->
-                    </select>
-                    <div class="buttonsContainer">
-                    <input type="file" class="fileInput" name="file" required>
-                    <button type="submit" class="uploadButton">Upload File</button>
-                    </div>
-                </form>
-            </div>
-            <div class="notesContainer hidden">
-                <h3>Notes</h3>
-                <textarea class="notesInput" placeholder="Add your notes here..."></textarea>
-                <button class="saveNotes">Save Notes</button>
-                <button class="clearNotes">Clear Notes</button>
-            </div>
+      <div class="task">
+        <span></span>
+        <div>
+          <button id="rotateStateButton" class="stateButton">Normal</button>
+          <button class="state-btn"></button>
+          <button class="move-btn">Move</button>
+          <button class="showContents">Show Contents</button>
         </div>
+        <ul class="contents hidden"></ul>
+        <div class="uploadContainer hidden">
+          <h3>Upload File</h3>
+          <form class="uploadForm" enctype="multipart/form-data">
+            <select class="folderSelect">
+              <!-- Options will be populated dynamically -->
+            </select>
+            <div class="buttonsContainer">
+              <input type="file" class="fileInput" name="file" required />
+              <button type="submit" class="uploadButton">Upload File</button>
+            </div>
+          </form>
+        </div>
+        <div class="notesContainer hidden">
+          <h3>Notes</h3>
+          <textarea
+            class="notesInput"
+            placeholder="Add your notes here..."
+          ></textarea>
+          <button class="saveNotes">Save Notes</button>
+          <button class="clearNotes">Clear Notes</button>
+        </div>
+      </div>
     </template>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="app.js"></script>
-</body>
+  </body>
 </html>
