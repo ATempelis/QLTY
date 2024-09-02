@@ -99,7 +99,6 @@ app.delete('/tasks/:folder/notes', (req, res) => {
     });
 });
 
-
 // Get tasks endpoint
 app.get('/tasks', (req, res) => {
     fs.readdir(TASKS_DIR, (err, folders) => {
@@ -107,13 +106,28 @@ app.get('/tasks', (req, res) => {
             return res.status(500).json({ error: 'Unable to fetch tasks.' });
         }
 
-        const tasks = folders.map(folder => ({
-            id: folder,
-            description: folder,
-            category: 'Quality Open Projects',
-            state: 'To Do',
-            completed: false
-        }));
+        const tasks = [];
+        folders.forEach(folder => {
+            const folderPath = path.join(TASKS_DIR, folder);
+            const stats = fs.lstatSync(folderPath);
+
+            if (stats.isDirectory()) {
+                const subfolders = fs.readdirSync(folderPath);
+                subfolders.forEach(subfolder => {
+                    const subfolderPath = path.join(folderPath, subfolder);
+                    const subfolderStats = fs.lstatSync(subfolderPath);
+                    if (subfolderStats.isDirectory()) {
+                        tasks.push({
+                            id: path.join(folder, subfolder),
+                            description: path.join(folder, subfolder),
+                            category: folder,
+                            state: 'To Do',
+                            completed: false
+                        });
+                    }
+                });
+            }
+        });
 
         res.json(tasks);
     });
@@ -141,12 +155,10 @@ app.post('/tasks/:folder/upload', upload.single('file'), (req, res) => {
     const folderPath = path.join(TASKS_DIR, req.params.folder);
     const filePath = path.join(folderPath, req.file.originalname);
 
-    // Check if the file already exists and if overwrite is not allowed
     if (fs.existsSync(filePath) && !req.body.overwrite) {
         return res.status(409).json({ success: false, message: 'File already exists.' });
     }
 
-    // Proceed to rename (move) the file from the temporary location to the target directory
     fs.rename(req.file.path, filePath, (err) => {
         if (err) {
             console.error('Error saving file:', err);
@@ -159,8 +171,6 @@ app.post('/tasks/:folder/upload', upload.single('file'), (req, res) => {
     });
 });
 
-
-
 // Move task endpoint
 app.post('/tasks/:folder/move', (req, res) => {
     if (!isAllowedIp(req)) {
@@ -172,21 +182,16 @@ app.post('/tasks/:folder/move', (req, res) => {
     const destinationDir = path.join(__dirname, 'tasksdone');
     const destinationPath = path.join(destinationDir, folderName);
 
-    // Check if the 'tasksdone' directory exists, if not, create it
     fs.access(destinationDir, fs.constants.F_OK, (err) => {
         if (err) {
-            // Directory doesn't exist, create it
             fs.mkdir(destinationDir, { recursive: true }, (err) => {
                 if (err) {
                     console.error('Error creating tasksdone directory:', err);
                     return res.status(500).json({ error: 'Unable to create tasksdone directory.' });
                 }
-
-                // Once the directory is confirmed to exist, move the folder
                 moveFolder(sourcePath, destinationPath, res);
             });
         } else {
-            // Directory exists, move the folder
             moveFolder(sourcePath, destinationPath, res);
         }
     });
@@ -291,3 +296,4 @@ io.on('connection', (socket) => {
 http.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
+

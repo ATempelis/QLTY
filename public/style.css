@@ -90,6 +90,38 @@ display: flex;
   border-radius: 5px;
 }
 
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px; /* Adjust spacing as needed */
+}
+
+.header-container h2 {
+  color: #333;
+  border-bottom: 2px solid #ff6600; /* Orange underline */
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+#filtersContainer {
+  display: flex;
+  gap: 10px; /* Space between the input and select */
+}
+
+#filtersContainer input,
+#filtersContainer select {
+  padding: 5px;
+  font-size: 14px;
+}
+
+#nameFilter, #statusFilter, #customStateFilter {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
 /* Buttons */
 button {
   background-color: transparent; /* Transparent background for outline style */
@@ -143,6 +175,7 @@ button:hover {
   margin-bottom: 10px;
 }
 
+
 /* State colors */
 .task.to-do {
   border-left: 5px solid #42a5f5; /* Blue for To Do */
@@ -152,6 +185,16 @@ button:hover {
 .task.in-progress {
   border-left: 5px solid #ff6600; /* Orange for In Progress */
   border-right: 5px solid #ff6600;
+}
+
+.task.for-print {
+  border-left: 5px solid #ef5350;
+  border-right: 5px solid #ef5350;
+}
+
+.task.to-check {
+  border-left: 5px solid #ffb74d; 
+  border-right: 5px solid #ffb74d;
 }
 
 .task.done {

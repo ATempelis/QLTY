@@ -12,7 +12,29 @@
   </head>
   <body>
     <div id="feedbackMessage" class="hidden"></div>
-
+    <div class="header-container">
+      <h2 class="category">Quality Projects</h2>
+      <button id="clearLocalStorage" style="display: none;">Clear Local Storage</button>
+      <div id="filtersContainer">
+          <input type="text" id="nameFilter" placeholder="Filter by name">
+          <select id="statusFilter">
+              <option value="">All statuses</option>
+              <option value="To Do">To Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="For Print">For Print</option>
+              <option value="To Check">To Check</option>
+              <option value="Done">Done</option>
+          </select>
+          <select id="customStateFilter">
+            <option value="">All priorities</option>
+            <option value="0">Minor</option>
+            <option value="1">Low</option>
+            <option value="2">Normal</option>
+            <option value="3">Important</option>
+            <option value="4">Urgent</option>
+        </select>
+      </div>
+  </div>
     <div id="tasksContainer"></div>
 
     <!-- Template for task -->

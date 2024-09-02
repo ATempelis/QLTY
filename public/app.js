@@ -3,6 +3,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const tasksContainer = document.getElementById("tasksContainer");
   const feedbackMessage = document.getElementById("feedbackMessage");
   const taskTemplate = document.getElementById("taskTemplate").content;
+  const nameFilter = document.getElementById("nameFilter");
+  const statusFilter = document.getElementById("statusFilter");
 
   let tasks = [];
   let isAllowed = false;
@@ -11,17 +13,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     const response = await fetch("/check-ip");
     const data = await response.json();
     isAllowed = data.allowed;
+    if (isAllowed) {
+      console.log("Ena");
+      clearLocalStorage.style.display = "block";
+  }
+
   } catch (error) {
     console.error("Failed to check IP allowance:", error);
   }
 
+  document.getElementById('clearLocalStorage').addEventListener('click', () => {
+    localStorage.clear();
+    console.log("Local storage has been cleared.");
+    fetchTasks(); // Refresh tasks after clearing storage
+});
+
   const stateColors = {
     "To Do": "#42a5f5",
     "In Progress": "#ff6600",
+    "For Print": "#ef5350",
+    "To Check": "#ffb74d",
     Done: "#66bb6a",
   };
 
-  const states = ["To Do", "In Progress", "Done"];
+  const states = ["To Do", "In Progress", "For Print", "To Check", "Done"];
 
   const customStates = [
     { name: "Minor", color: "#6c757d" }, // Gray
@@ -109,9 +124,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     return folders;
   };
 
-  const renderTasks = () => {
+  const filterTasks = () => {
+    const filteredTasks = tasks.filter((task) => {
+      const matchesName = task.description.toLowerCase().includes(nameFilter.value.toLowerCase());
+      const matchesStatus = statusFilter.value === "" || task.state === statusFilter.value;
+      const matchesCustomState = customStateFilter.value === "" || task.customState == customStateFilter.value;
+      return matchesName && matchesStatus && matchesCustomState;
+    });
+    renderTasks(filteredTasks);
+  };
+
+  nameFilter.addEventListener("input", filterTasks);
+  statusFilter.addEventListener("change", filterTasks);
+  customStateFilter.addEventListener("change", filterTasks);
+
+  const renderTasks = (tasksToRender = tasks) => {
     tasksContainer.innerHTML = "";
-    const categorizedTasks = tasks.reduce((acc, task) => {
+    const categorizedTasks = tasksToRender.reduce((acc, task) => {
       if (task.id) {
         acc[task.category] = acc[task.category] || [];
         acc[task.category].push(task);
@@ -461,7 +490,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const toggleState = (id) => {
     const task = tasks.find((task) => task.id === id);
-    if (task && task.state !== "Done") {
+    if (task) {
       const currentIndex = states.indexOf(task.state);
       task.state = states[(currentIndex + 1) % states.length];
       localStorage.setItem("tasks", JSON.stringify(tasks));
