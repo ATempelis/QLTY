@@ -197,6 +197,26 @@ app.post('/tasks/:folder/move', (req, res) => {
     });
 });
 
+app.post('/tasks/:folder/logStatusChange', (req, res) => {
+    const notesFilePath = path.join(TASKS_DIR, req.params.folder, 'notes.txt');
+    const { fromState, toState } = req.body;
+    const userIpIn = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const userIp = userIpIn.replace('::ffff:', '');
+
+    const { DateTime } = require('luxon');
+    const localTime = DateTime.now().setZone('Europe/Athens').toFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+
+    const logEntry = `${localTime} - ${userIp}: Status changed from ${fromState} to ${toState}\n`;
+
+    fs.appendFile(notesFilePath, logEntry, (err) => {
+        if (err) {
+            console.error('Error logging status change:', err);
+            return res.status(500).json({ success: false, error: 'Failed to log status change.' });
+        }
+        res.json({ success: true });
+    });
+});
+
 // Helper function to move the folder
 const moveFolder = (sourcePath, destinationPath, res) => {
     fs.mkdir(destinationPath, { recursive: true }, (err) => {
@@ -296,4 +316,3 @@ io.on('connection', (socket) => {
 http.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
-

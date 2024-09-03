@@ -3,8 +3,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const tasksContainer = document.getElementById("tasksContainer");
   const feedbackMessage = document.getElementById("feedbackMessage");
   const taskTemplate = document.getElementById("taskTemplate").content;
+  const clearLocalStorageButton = document.getElementById('clearLocalStorage');
+  
   const nameFilter = document.getElementById("nameFilter");
   const statusFilter = document.getElementById("statusFilter");
+  const customStateFilter = document.getElementById("customStateFilter");
 
   let tasks = [];
   let isAllowed = false;
@@ -14,19 +17,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     const data = await response.json();
     isAllowed = data.allowed;
     if (isAllowed) {
-      console.log("Ena");
-      clearLocalStorage.style.display = "block";
-  }
+      clearLocalStorageButton.style.display = "block";
+    }
 
   } catch (error) {
     console.error("Failed to check IP allowance:", error);
   }
 
-  document.getElementById('clearLocalStorage').addEventListener('click', () => {
+  clearLocalStorageButton.addEventListener('click', () => {
     localStorage.clear();
     console.log("Local storage has been cleared.");
     fetchTasks(); // Refresh tasks after clearing storage
-});
+  });
 
   const stateColors = {
     "To Do": "#42a5f5",
@@ -65,7 +67,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       tasks = [...folderTasks];
       localStorage.setItem("tasks", JSON.stringify(tasks));
-      renderTasks();
+      applyFiltersAndRender();
     } catch (error) {
       console.error("Failed to fetch tasks:", error);
       showFeedback("Failed to fetch tasks.", "error");
@@ -164,8 +166,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const notesInput = taskElement.querySelector(".notesInput");
         const saveNotesButton = taskElement.querySelector(".saveNotes");
         const clearNotesButton = taskElement.querySelector(".clearNotes");
-        const rotateStateButton =
-          taskElement.querySelector("#rotateStateButton");
+        const rotateStateButton = taskElement.querySelector("#rotateStateButton");
 
         // Ensure state is defined and defaults to 'To Do'
         task.state = task.state || "To Do";
@@ -188,39 +189,46 @@ document.addEventListener("DOMContentLoaded", async () => {
           clearNotesButton.style.display = "none";
         }
 
-        if (rotateStateButton) {
-          // Set the button text and color based on the task's customState
-          rotateStateButton.textContent = customStates[task.customState].name;
-          rotateStateButton.style.backgroundColor =
-            customStates[task.customState].color;
+        // Set the button text and color based on the task's customState
+        rotateStateButton.textContent = customStates[task.customState].name;
+        rotateStateButton.style.backgroundColor = customStates[task.customState].color;
 
-          // Event listener for the rotate state button
-          rotateStateButton.addEventListener("click", () => {
-            if (isAllowed) {
-              task.customState = (task.customState + 1) % customStates.length;
-              rotateStateButton.textContent =
-                customStates[task.customState].name;
-              rotateStateButton.style.backgroundColor =
-                customStates[task.customState].color;
+        // Event listener for the rotate state button
+        rotateStateButton.addEventListener("click", async () => {
+          if (isAllowed) {
+            const previousState = task.customState;
+            task.customState = (task.customState + 1) % customStates.length;
+            rotateStateButton.textContent = customStates[task.customState].name;
+            rotateStateButton.style.backgroundColor = customStates[task.customState].color;
 
-              // Save the updated tasks to localStorage
-              localStorage.setItem("tasks", JSON.stringify(tasks));
-              socket.emit("taskUpdate", task); // Update server if necessary
-            } else {
-              alert("You do not have permission to change the state.");
-            }
-          });
-        } else {
-          console.error(
-            "Rotate state button element is missing in the task template."
-          );
-        }
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+
+            // Log the state change
+            await logStatusChange(task.id, previousState, task.customState);
+
+            applyFiltersAndRender(); // Re-apply filters and render the updated task list
+
+            socket.emit("taskUpdate", task); // Update server if necessary
+          } else {
+            alert("You do not have permission to change the state.");
+          }
+        });
 
         // Event listener for the state button
-        stateButton.addEventListener("click", () => {
-          toggleState(task.id);
+        stateButton.addEventListener("click", async (event) => {
+          event.stopPropagation(); // Prevents the event from bubbling up and being handled multiple times
+          if (!stateButton.dataset.handled) { // Ensure the event is not handled more than once
+              stateButton.dataset.handled = true;
+      
+              const previousState = task.state;
+              await toggleState(task.id);
+              await logStatusChange(task.id, previousState, task.state);
+      
+              applyFiltersAndRender();
+      
+              stateButton.dataset.handled = false; // Reset the handler flag
+          }
       });
-
         // Event listener for the move button
         moveButton.addEventListener("click", () => {
           if (task.state !== "Done") {
@@ -241,11 +249,10 @@ document.addEventListener("DOMContentLoaded", async () => {
               .map((item) => {
                 if (item.isFolder) {
                   return `
-                                        <li class="folder-item">
-                                            <strong class="folder-toggle">${item.name}</strong>
-                                            <ul class="subfolder-contents hidden"></ul>
-                                        </li>
-                                    `;
+                    <li class="folder-item">
+                      <strong class="folder-toggle">${item.name}</strong>
+                      <ul class="subfolder-contents hidden"></ul>
+                    </li>`;
                 } else {
                   return `<li><a href="/tasks/${encodeURIComponent(
                     task.id
@@ -284,8 +291,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             showContentsButton.textContent = "Show Contents";
           }
         });
-
-        
 
         // Event listener for the upload form
         const uploadForm = uploadContainer.querySelector(".uploadForm");
@@ -479,6 +484,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   };
 
+  const applyFiltersAndRender = () => {
+    const nameFilterValue = nameFilter.value.toLowerCase();
+    const statusFilterValue = statusFilter.value;
+    const customStateFilterValue = customStateFilter.value;
+
+    const filteredTasks = tasks.filter((task) => {
+        const matchesName = task.description.toLowerCase().includes(nameFilterValue);
+        const matchesStatus = statusFilterValue === "" || task.state === statusFilterValue;
+        const matchesCustomState = customStateFilterValue === "" || task.customState == customStateFilterValue;
+        return matchesName && matchesStatus && matchesCustomState;
+    });
+
+    renderTasks(filteredTasks);
+};
+
   const showFeedback = (message, type) => {
     feedbackMessage.textContent = message;
     feedbackMessage.className = `feedbackMessage ${type}`;
@@ -488,14 +508,37 @@ document.addEventListener("DOMContentLoaded", async () => {
     }, 3000);
   };
 
-  const toggleState = (id) => {
+  const toggleState = async (id) => {
     const task = tasks.find((task) => task.id === id);
     if (task) {
-      const currentIndex = states.indexOf(task.state);
-      task.state = states[(currentIndex + 1) % states.length];
-      localStorage.setItem("tasks", JSON.stringify(tasks));
-      renderTasks();
-      socket.emit("taskUpdate", task);
+        const currentIndex = states.indexOf(task.state);
+        const previousState = task.state;
+        task.state = states[(currentIndex + 1) % states.length];
+
+        localStorage.setItem("tasks", JSON.stringify(tasks));
+
+        socket.emit("taskUpdate", task);
+    }
+};
+
+  const logStatusChange = async (taskId, fromState, toState) => {
+    try {
+        const response = await fetch(`/tasks/${encodeURIComponent(taskId)}/logStatusChange`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                fromState: fromState,
+                toState: toState
+            }),
+        });
+
+        if (!response.ok) {
+            console.error("Failed to log status change.");
+        }
+    } catch (error) {
+        console.error("Error logging status change:", error);
     }
   };
 
@@ -511,7 +554,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Remove task from local state and update UI
       tasks = tasks.filter((task) => task.id !== id);
       localStorage.setItem("tasks", JSON.stringify(tasks));
-      renderTasks();
+      applyFiltersAndRender(); // Re-apply filters and render the updated task list
 
       // Notify server about the move
       socket.emit("taskUpdate", { id, moved: true });
@@ -531,24 +574,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       tasks.push(task);
     }
 
-    // Save the current collapse state
-    const contentsList = document.querySelector(".contents");
-    const uploadContainer = document.querySelector(".uploadContainer");
-    const notesContainer = document.querySelector(".notesContainer");
-    const showContentsButton = document.querySelector(".showContents");
-
-    const wasContentVisible = !contentsList.classList.contains("hidden");
-
-    fetchTasks(); // Re-fetch tasks to update the UI
-    renderTasks();
-
-    // Restore the collapse state after re-rendering
-    if (wasContentVisible) {
-      contentsList.classList.remove("hidden");
-      uploadContainer.classList.remove("hidden");
-      notesContainer.classList.remove("hidden");
-      showContentsButton.textContent = "Hide Contents";
-    }
+    applyFiltersAndRender(); // Re-apply filters and render the updated task list
   });
 
   // Initial task fetch
